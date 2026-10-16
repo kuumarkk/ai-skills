@@ -15,13 +15,13 @@ Skills live under `skills/`, grouped into buckets:
 
 Each skill is its own directory containing a `SKILL.md` (with YAML frontmatter — `name` and `description`) and any bundled scripts or reference files.
 
-Workspace discovery is configured in [`.agents/skills.json`](./.agents/skills.json) and global persona & safety guardrails are defined in [`GEMINI.md`](./GEMINI.md).
+Workspace discovery is configured in [`.agents/skills.json`](./.agents/skills.json), repository layout rules are scoped to this repo in [`.agents/rules/repo-layout.md`](./.agents/rules/repo-layout.md), and global Senior DevSecOps persona & safety guardrails are defined in [`GEMINI.md`](./GEMINI.md).
 
 ## Install
 
 ### Global Symlink (Antigravity, Antigravity IDE & Gemini)
 
-Symlink every shippable skill into `~/.gemini/config/skills/` (Antigravity / Antigravity IDE) and `~/.gemini/skills/` (Gemini CLI):
+Symlink every shippable skill (`~/.gemini/config/skills/` and `~/.gemini/skills/`) **and** the global Senior DevSecOps persona & safety guardrails ([`GEMINI.md`](./GEMINI.md) → `~/.gemini/config/GEMINI.md` and `~/.gemini/GEMINI.md`):
 
 ```bash
 ./scripts/link-skills.sh

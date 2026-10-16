@@ -47,3 +47,15 @@ for DEST in "${DESTS[@]}"; do
     echo "linked $name -> $target"
   done
 done
+
+# Link global Senior DevSecOps persona & safety guardrails (GEMINI.md)
+RULE_DESTS=(
+  "$HOME/.gemini/config/GEMINI.md"
+  "$HOME/.gemini/GEMINI.md"
+)
+
+for RULE_DEST in "${RULE_DESTS[@]}"; do
+  mkdir -p "$(dirname "$RULE_DEST")"
+  ln -sfn "$REPO/GEMINI.md" "$RULE_DEST"
+  echo "linked GEMINI.md -> $RULE_DEST"
+done

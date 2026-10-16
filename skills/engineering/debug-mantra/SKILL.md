@@ -1,75 +1,72 @@
 ---
 name: debug-mantra
-description: Four-mantra debugging discipline — reproduce, trace the fail path, falsify the hypothesis, cross-reference every breadcrumb. Recite the mantra block verbatim at the start of any debugging session, then apply the four steps in order before proposing any fix. Trigger on /debug-mantra and proactively whenever debugging starts — user reports a bug, says something is broken/throwing/failing, asks to debug/diagnose/investigate an issue, or pastes a stack trace or error log.
+description: Four-mantra DevSecOps debugging discipline — reproduce safely, trace the infrastructure/control-plane fail path, falsify the hypothesis, cross-reference every breadcrumb. Recite the mantra block verbatim at the start of any debugging session, then apply the four steps in order before proposing any fix or state change. Trigger on /debug-mantra and proactively whenever troubleshooting starts — EKS/Karpenter scheduling or pod crashes, Terraform/Terragrunt plan/apply failures, IAM/OIDC/Pod Identity AccessDenied errors, AWS network/TLS/WAF drops, or CI/CD pipeline failures.
 ---
 
-# Debug Mantra
+# Debug Mantra (DevSecOps Edition)
 
-Four-step discipline for any debug session. Recite verbatim, then apply in order.
+Four-step discipline for any infrastructure, Kubernetes, security, or CI/CD debugging session. Recite verbatim, then apply in order.
 
 ## Recite this — verbatim, as the first thing in your first response
 
 > **Mantra:**
 > 1. **First is reproducibility.** Can the issue be reproduced reliably?
-> 2. **Know the fail path.** Debugger first; then source trace + knob enumeration; then in-code instrumentation.
+> 2. **Know the fail path.** Control-plane telemetry first; then IaC/config trace + knob enumeration; then targeted diagnostic probes.
 > 3. **Question your hypothesis.** What would disprove it?
 > 4. **Every run is a breadcrumb.** Cross-reference all of them.
 
-Then begin work.
+Then begin work in concise, technical **English**.
 
 ---
 
-## 1. Reproduce reliably
+## 1. Reproduce reliably (and safely)
 
-Build a runnable repro before anything else.
+Build a deterministic, non-destructive reproducer before proposing any fix.
 
-- **Reliable repro** → capture the exact steps, inputs, and environment as a runnable artifact: failing test, curl script, CLI invocation, replay harness.
-- **Flaky repro** → the bug is not yet debuggable. Raise the rate first: loop the trigger, parallelise, add stress, narrow timing windows, inject sleeps. 50% flake is debuggable; 1% is not.
-- **No repro at all** → stop. Say so explicitly. Ask the user for env access, captured artifacts (HAR, log dump, core), or permission to instrument. Do **not** proceed to hypothesise.
+- **Reliable repro** → capture the exact read-only command, input manifest, or check that demonstrates the failure (`terraform plan`, `helm template`, `kubectl get events`, `curl -vk`, `aws sts/iam` simulation, CI job log).
+- **Flaky / intermittent issue** (e.g., intermittent 502/504 on ALB, sporadic Spot/Karpenter eviction, DNS timeout) → correlate timestamps across ALB access logs, Envoy/CoreDNS logs, VPC Flow Logs, and Kubernetes node events before guessing.
+- **No repro / missing visibility** → stop. State explicitly what telemetry is missing (CloudTrail event, pod logs, `terraform plan` output, Security Group ID) and run read-only `describe`/`get`/`logs` commands or ask the user for access. Do **not** guess fixes blindly.
 
-Target: a fast (1–5 s), deterministic pass/fail signal. Pin time, seed the RNG, freeze network, isolate filesystem.
+**Safety Lock:** Never use `terraform apply`, `kubectl delete`, or `helm upgrade` in production just to "see what happens." Reproduce via `plan`, dry-run (`--dry-run=server`), or non-prod isolation first.
 
 ## 2. Know the fail path
 
-Once reproducible, find *where* the code breaks and *what stops it from breaking*. The differential narrows the search. Try in this order — escalate only when the prior tactic fails.
+Once reproducible, isolate *where* in the stack (Edge → Network → IAM → Node/Karpenter → Pod → Downstream AWS Service) the failure originates. Escalate in this order:
 
-1. **Attach a debugger.** If the env supports it, attach and step to the failure site. One breakpoint beats ten logs. Do this **before** turning any knobs.
-2. **Source trace + knob enumeration.** If no debugger (or it can't reach the bug), trace the code path end-to-end and list every knob that can influence the outcome:
-   - config flags, env vars, feature toggles
-   - branch conditions, input shape
-   - timing, concurrency, build options
-   Each knob is a candidate axis to flip in the differential. Flip one at a time.
-3. **In-code instrumentation.** If outside knobs can't move the failure, go inside: `printf` / log statements at the suspected fail site, dump the relevant internal state. Tag every probe with a unique prefix (e.g. `[DBG-a4f2]`) so cleanup is a single grep. Let the trace show where reality diverges from your model.
+1. **Control-plane & audit telemetry first.** Inspect authoritative events before touching code:
+   - **Kubernetes / EKS / Karpenter:** `kubectl describe pod/node/nodepool/ec2nodeclass`, `kubectl get events --sort-by='.lastTimestamp'`, `kubectl logs -n kube-system` (Karpenter, AWS LBC, CoreDNS, CNI), ArgoCD sync status.
+   - **AWS & IAM:** CloudTrail (`lookup-events` for `AccessDenied` / `Client.UnauthorizedOperation`), IAM Policy Simulator, VPC Reachability Analyzer, WAF blocked requests, RDS/MSK events.
+   - **Terraform / Terragrunt:** `terraform plan`, `terraform validate`, state inspection (`terraform state list/show`).
+2. **IaC / Configuration trace + knob enumeration.** Trace the request or provisioning path end-to-end and enumerate every security/infra knob on that path:
+   - IAM trust policy conditions (`sub`, `aud`, EKS Pod Identity association, IRSA service account name/namespace, KMS key policy + grants).
+   - Network hops (CloudFront → WAF → ALB Listener → Target Group health check → Security Group ingress/egress → NACL → Route Table → Pod `containerPort`).
+   - Kubernetes constraints (`securityContext` `readOnlyRootFilesystem`/`runAsNonRoot`, `resources.limits` OOMKilled, `topologySpreadConstraints`, taints/tolerations, `NodePool` requirements, PDB locks).
+3. **Targeted diagnostic probes.** When passive telemetry isn't enough:
+   - Run an ephemeral debug container (`kubectl debug` with `nicolaka/netshoot` or read-only curl/dig check), enable verbose CLI output (`TF_LOG=DEBUG`, `kubectl --v=8`), or inspect rendered manifests (`helm template --debug`).
 
 ## 3. Falsify the hypothesis
 
-When a candidate root cause surfaces, scrutinise it **before** testing it.
+When a candidate root cause surfaces, scrutinise it **before** proposing an IaC or cluster change.
 
-- Does it actually explain the symptom end-to-end? Walk it through.
-- What is the simplest **proof**? What is the cleanest **disproof**?
-- Run the **disproof first**. If the hypothesis survives, it's real. If it dies, you saved yourself from chasing a phantom.
-- Generate 3–5 ranked hypotheses, not one. Single-hypothesis thinking anchors on the first plausible idea.
+- Does it explain the exact error code / symptom end-to-end? Walk the chain.
+- What is the fastest **read-only disproof**? (e.g., checking `aws ec2 describe-security-group-rules` to prove whether port 5432 is actually blocked before blaming the Security Group).
+- Run the **disproof first**. Generate 3–5 ranked hypotheses across layers (IAM, Network, K8s scheduling, App config, State drift) rather than anchoring on the first plausible guess.
 
 ## 4. Every run is a breadcrumb
 
-Maintain a running **ledger** of every experiment in this session. Each entry: what changed, what happened, what it ruled in or out.
+Maintain a running **ledger** of every check and observation in this session: what was inspected, what output returned, and what layer/hypothesis it ruled in or out.
 
-- When a new hypothesis surfaces, walk the ledger. Does it hold for **every** prior observation, not just the most recent?
-- If any past run contradicts it, the hypothesis is wrong or incomplete — refine or discard.
-- When in doubt, design the **single experiment** whose outcome makes it certain. Run that next, instead of churning on adjacent runs.
-- Update the ledger after every run. It is your memory across the session.
+- When a new hypothesis surfaces, verify it holds against **every** prior observation in the ledger.
+- Design the **single read-only check** whose outcome disambiguates the remaining hypotheses.
 
 ---
 
 ## Operating rules
 
-- Recite the mantra block **once** per debug session, in your first response. Do not re-recite mid-session.
-- Recite **verbatim**. Never paraphrase, shorten, or skip lines of the recital.
-- If the user says "skip the mantra" → skip the recital but still apply the four steps silently.
+- Recite the mantra block **once** per debug session, verbatim, in your first response.
 - Apply the four steps **in order**:
-  - Do not propose a fix before #1 is satisfied (reliable repro exists).
-  - Do not start testing hypotheses before #2 has narrowed the fail path.
-  - Do not commit to a hypothesis before #3 has tried to disprove it.
-  - Do not declare a hypothesis correct until #4 confirms it against every prior breadcrumb.
-- If you catch yourself proposing a fix without a reliable repro, stop and return to step 1.
-- The mantra is a constraint **you** carry through the session — not advice to deliver back to the user.
+  - Do not propose a fix before #1 is satisfied (clear symptom/repro confirmed).
+  - Do not modify `.tf` or K8s manifests before #2 has isolated the failing layer and knob.
+  - Do not commit to a root cause before #3 has tried to disprove it with read-only checks.
+  - Do not declare the root cause confirmed until #4 matches every prior breadcrumb.
+- **Mandatory Human-in-the-Loop Lock:** Never execute state-mutating commands (`terraform apply/destroy`, `kubectl apply/delete/patch`, `helm upgrade/install`, `aws kms decrypt`, `aws secretsmanager get-secret-value`) without explicit user confirmation in chat.

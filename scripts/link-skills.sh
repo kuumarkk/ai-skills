@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Links all shippable skills in the repository to ~/.gemini/config/skills
-# (for Antigravity CLI, Antigravity IDE, and Antigravity 2.0) and ~/.gemini/skills
-# (for Gemini CLI).
+# Installs all shippable skills and global GEMINI.md in the repository as
+# standalone copies into ~/.gemini/config (for Antigravity CLI, Antigravity IDE,
+# and Antigravity 2.0) and ~/.gemini (for Gemini CLI).
+# Copying instead of symlinking ensures global rules and skills keep working
+# even if this repository is renamed, moved, or deleted.
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 DESTS=(
@@ -12,21 +14,15 @@ DESTS=(
 )
 
 for DEST in "${DESTS[@]}"; do
-  # If DEST is a symlink that resolves into this repo, we'd end up writing the
-  # per-skill symlinks back into the repo's own skills/ tree. Detect and bail out
-  # instead of polluting the working copy.
+  # If DEST itself is a symlink, remove the symlink first so mkdir creates a real directory.
   if [ -L "$DEST" ]; then
-    resolved="$(readlink -f "$DEST")"
-    case "$resolved" in
-      "$REPO"|"$REPO"/*)
-        echo "error: $DEST is a symlink into this repo ($resolved)." >&2
-        echo "Remove it (rm \"$DEST\") and re-run; the script will recreate it as a real dir." >&2
-        exit 1
-        ;;
-    esac
+    rm -f "$DEST"
   fi
 
   mkdir -p "$DEST"
+
+  # Clean up any broken symlinks left over from previous symlink installs or repo renames.
+  find "$DEST" -maxdepth 1 -type l ! -exec test -e {} \; -delete
 
   find "$REPO/skills" -name SKILL.md \
     -not -path '*/node_modules/*' \
@@ -39,16 +35,16 @@ for DEST in "${DESTS[@]}"; do
     name="$(basename "$src")"
     target="$DEST/$name"
 
-    if [ -e "$target" ] && [ ! -L "$target" ]; then
+    if [ -e "$target" ] || [ -L "$target" ]; then
       rm -rf "$target"
     fi
 
-    ln -sfn "$src" "$target"
-    echo "linked $name -> $target"
+    cp -R "$src" "$target"
+    echo "copied $name -> $target"
   done
 done
 
-# Link global Senior DevSecOps persona & safety guardrails (GEMINI.md)
+# Copy global Senior DevSecOps persona & safety guardrails (GEMINI.md)
 RULE_DESTS=(
   "$HOME/.gemini/config/GEMINI.md"
   "$HOME/.gemini/GEMINI.md"
@@ -56,6 +52,9 @@ RULE_DESTS=(
 
 for RULE_DEST in "${RULE_DESTS[@]}"; do
   mkdir -p "$(dirname "$RULE_DEST")"
-  ln -sfn "$REPO/GEMINI.md" "$RULE_DEST"
-  echo "linked GEMINI.md -> $RULE_DEST"
+  if [ -e "$RULE_DEST" ] || [ -L "$RULE_DEST" ]; then
+    rm -f "$RULE_DEST"
+  fi
+  cp "$REPO/GEMINI.md" "$RULE_DEST"
+  echo "copied GEMINI.md -> $RULE_DEST"
 done

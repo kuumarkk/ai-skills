@@ -1,4 +1,4 @@
-# ai-skills (Senior DevSecOps Edition)
+# devops-skills (Senior DevSecOps Edition)
 
 Agent skills for **Google Antigravity** (`agy` CLI, **Antigravity IDE**, Antigravity 2.0) and **Gemini**, tailored for a **Senior DevSecOps Specialist & Cloud Infrastructure Architect**.
 
@@ -19,9 +19,9 @@ Workspace discovery is configured in [`.agents/skills.json`](./.agents/skills.js
 
 ## Install
 
-### Global Symlink (Antigravity, Antigravity IDE & Gemini)
+### Global Install (Antigravity, Antigravity IDE & Gemini)
 
-Symlink every shippable skill (`~/.gemini/config/skills/` and `~/.gemini/skills/`) **and** the global Senior DevSecOps persona & safety guardrails ([`GEMINI.md`](./GEMINI.md) → `~/.gemini/config/GEMINI.md` and `~/.gemini/GEMINI.md`):
+Copy every shippable skill (`~/.gemini/config/skills/` and `~/.gemini/skills/`) **and** the global Senior DevSecOps persona & safety guardrails ([`GEMINI.md`](./GEMINI.md) → `~/.gemini/config/GEMINI.md` and `~/.gemini/GEMINI.md`) as standalone files so they remain active even if this repository is renamed, moved, or deleted:
 
 ```bash
 ./scripts/link-skills.sh

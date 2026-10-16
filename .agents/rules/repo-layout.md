@@ -1,6 +1,6 @@
 ---
 trigger: always_on
-description: Repository layout, skill bucket organization, and README/skills.json synchronization rules for the ai-skills repository.
+description: Repository layout, skill bucket organization, and README/skills.json synchronization rules for the devops-skills repository.
 ---
 
 # Repository Layout & Skill Rules

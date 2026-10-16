@@ -1,155 +1,118 @@
 ---
 name: post-mortem
-description: Write the canonical engineering record of a fixed bug — root cause, mechanism, fix, validation, and how it slipped through. Engineer-audience, code identifiers welcome. Use after a debug session lands a fix, before closing the ticket. Trigger on /post-mortem, when the user says "write the post-mortem / postmortem / RCA / root cause analysis", "document this fix", "write up the root cause", "close out this bug with a writeup", or hands you a fixed-and-validated bug and asks for the writeup.
+description: Write the canonical DevSecOps engineering record of a resolved infrastructure incident, security finding remediation, or production bug — blast radius, root cause, mechanism, fix, validation, detection/CI-CD gap, and shift-left prevention items. Engineer-audience, AWS/Terraform/K8s identifiers and Confluence Cloud Mermaid diagrams welcome. Trigger on /post-mortem, when the user says "write the post-mortem / postmortem / RCA / root cause analysis", "document this incident/fix", "write up the root cause", or hands you a resolved and validated infra/security issue.
 ---
 
-# Post-mortem
+# Post-mortem & Incident RCA (DevSecOps Edition)
 
-The canonical engineering record of a bug fix. Written **after** debugging lands a real fix, **for** other engineers (and future-you, who will have forgotten everything in 6 months). Code identifiers are welcome here — this is the artifact that lets the next person recover the mental model fast.
+The canonical engineering record of a resolved production incident, infrastructure bug, or security remediation. Written **after** the fix/mitigation is validated, **for** DevSecOps/Platform engineers. Exact Terraform resource addresses, Kubernetes object names, IAM role ARNs, AWS error codes, and commit SHAs belong here.
 
-For the up-the-org version of this same content, hand the finished post-mortem to [`management-talk`](../../productivity/management-talk/SKILL.md). They compose: post-mortem owns the engineering truth, management-talk reframes it for leadership.
+For the executive / leadership version of this same incident, hand the finished post-mortem to [`management-talk`](../../productivity/management-talk/SKILL.md).
 
-## When to invoke
+## Language & Communication Stance
 
-- "/post-mortem"
-- "write the post-mortem / postmortem / RCA / root-cause analysis"
-- "document this fix" / "write up the root cause" / "close out this bug with a writeup"
-- After a debug session has clearly landed a fix, proactively offer to draft one.
+- **Language:** Write prose explanations in **Thai** (unless the user explicitly requests an English-only document for external auditors/vendors). Keep all technical identifiers, resource names, log lines, commands, and Mermaid node labels in **English**.
+- **Tone:** Blameless, direct, mechanism-first, zero hedging.
 
 ## When NOT to use
 
-- **Bug not fixed yet, or fix not validated.** A post-mortem of a hypothesis is misleading. Refuse and tell the user what's missing.
-- **Customer-visible outage / incident.** Those need a separate incident report (timeline, blast radius, paging history, comms). This skill is bug-fix scope. Flag and confirm before producing one.
-- **Trivial fix** (typo, obvious one-liner). The PR description is the record. Don't manufacture ceremony.
+- **Incident still active or fix unvalidated.** Refuse to draft until the bleeding is stopped, root cause is proven, and the fix is validated. List which required inputs are missing and stop.
+- **Trivial typo / non-operational change.** The PR description is sufficient.
 
 ## Required inputs — refuse to draft without these
 
-Before writing a single line, confirm all four. If any are missing, list what's missing and stop:
+Confirm all four before drafting. If any are missing, list what is missing and stop:
 
-- [ ] **Reliable repro** exists (not "happens sometimes" — a deterministic or high-rate-flake repro the next person can run).
-- [ ] **Root cause is known** (the mechanism is identified, not a hypothesis).
-- [ ] **Fix is identified** (PR / commit / branch pointer).
-- [ ] **Fix is validated** (the original repro now passes; the customer workload / failing test now succeeds).
-
-These map directly to `debug-mantra` steps 1–4. If you came in via `debug-mantra`, the breadcrumb ledger from step 4 is your raw material — pull from it.
+- [ ] **Deterministic repro or authoritative telemetry** exists (CloudTrail event, ALB/WAF log, `kubectl events`, `terraform plan` diff, Prometheus/CloudWatch metric spike).
+- [ ] **Root cause mechanism is proven** (not a speculation).
+- [ ] **Fix / remediation is identified** (PR, commit SHA, Terraform state/module change, ArgoCD revision).
+- [ ] **Fix is validated** (workload healthy, `terraform plan` clean, security scan passing, synthetic/canary check green).
 
 ## Structure
 
-Use these blocks in this order. **Summary, Root cause, Fix, and Validation are mandatory.** The rest are conditional but usually present.
+Use these sections in order. **Summary, Blast Radius & Impact, Root Cause, Fix, and Validation are mandatory.**
 
 ### 1. Summary _(mandatory)_
-One paragraph. What broke, in user/workload terms. What fixed it, in one sentence. JIRA key, PR number, owner. A reader who stops here should have the right answer.
+One paragraph: what failed or was exposed, customer/workload blast radius, duration, root cause in one sentence, and what resolved it. Include JIRA/Incident key, PR number, and owner.
 
-### 2. Symptom
-What was actually observed. Test output, error message, log line, perf number, customer report. Concrete identifiers — don't paraphrase the failure mode.
+### 2. Blast Radius, Impact & Symptom _(mandatory)_
+- Affected environment(s), AWS account/region, EKS cluster, and services.
+- Exact symptom observed: HTTP 5xx rate, pod crash/pending state, `AccessDenied` error code, latency spike, or failed pipeline gate.
 
-### 3. Root cause _(mandatory)_
-The actual bug mechanism. **Code identifiers welcome and expected** — function names, file paths, struct fields, branch conditions, commit SHAs of the offending change. Walk the cause chain end-to-end. This is the most expensive section and the reason the post-mortem exists at all. Future-you will live or die by how clearly you write this.
+### 3. Root Cause & Failure Chain _(mandatory)_
+Walk the exact technical mechanism end-to-end using concrete identifiers (`module.eks_karpenter`, `karpenter.sh/v1` `NodePool`, `aws_iam_role_policy`, Security Group IDs, commit SHAs).
+Include a **Confluence Cloud-compatible Mermaid diagram** (all labels containing `()`, `/`, `:`, `[]`, `-` wrapped in double quotes `["..."]`) when illustrating a multi-hop failure chain (e.g., IAM trust mismatch, network drop, or ArgoCD/Karpenter race).
 
-### 4. Why it produced the symptom
-Link the root cause to the symptom. Often non-obvious — the bug is in `tadaLaunchPrepare` but the visible failure is a customer training run hanging hours later. Walk the chain so a reader who only knows the symptom can connect it back to the cause without re-deriving it.
+### 4. Fix & Remediation _(mandatory)_
+- Immediate mitigation (rollback, WAF rule, PDB adjustment, scaling override) vs. permanent IaC/GitOps fix (PR/commit).
+- Explain **why** the permanent change eliminates the root cause class rather than masking the symptom.
 
-### 5. Fix _(mandatory)_
-What changed and **why this change addresses the root cause** rather than hiding the symptom. Link to PR / commit. If a previous fix attempt papered over the symptom, name it and explain what was wrong with it — that history is part of the cause.
+### 5. How it was diagnosed
+Short debugging path (pulling from the `debug-mantra` breadcrumb ledger):
+- Which telemetry source isolated the layer (CloudTrail, `kubectl get events`, VPC Flow Logs, `terraform plan`).
+- Hypotheses ruled out and the single check that proved the root cause.
 
-### 6. How it was found
-Short. The debugging path:
-- What repro made it deterministic.
-- What tools cracked it (debugger, source tracing, knob enumeration, in-code instrumentation — the `debug-mantra` step 2 cascade).
-- Hypotheses tried and rejected, with the one-line reason each was rejected. (Pull from the breadcrumb ledger.)
-- The single experiment that confirmed the cause.
+### 6. Why it slipped through (Shift-Left & Detection Gap)
+Identify the systemic gap (**blameless** — never name individuals as the cause):
+- **CI/CD Shift-Left Gap:** Missing `checkov` / `tflint` / `kubeconform` / `trivy` / `gitleaks` policy check.
+- **Environment Drift / Parity Gap:** Staging `live/staging` differed from `live/prod` in Terragrunt inputs or workload traffic shape.
+- **Observability / Alerting Gap:** Missing CloudWatch, Prometheus, or GuardDuty alert before customer impact.
 
-This section is for the next debugger — make it learnable.
+### 7. Validation _(mandatory)_
+Concrete proof that the fix works and did not introduce regressions:
+- `terraform plan` shows zero unexpected changes; `tflint` and `checkov` pass.
+- Kubernetes rollout status, pod health probes, and Karpenter node provisioning verified.
+- Canary / synthetic workload test results and observation window duration.
 
-### 7. Why it slipped through
-What allowed this bug to reach the branch / release / customer. Pick the real reason:
-- CI gap (no test exercises this path / configuration).
-- Latent code (correct when written, broken by a later change in a different file).
-- Workload gap (no real workload reached this code path until now).
-- Incomplete prior fix (defensive check hid the symptom; root cause untouched).
-- Review miss (the change was reviewable; the implication wasn't).
+### 8. Action Items (Shift-Left Prevention)
+Concrete follow-ups with **What + Owner + Tracking Ticket**:
+- Policy-as-Code / CI gate added (`checkov` custom policy, `kubeconform` schema check, OPA/Kyverno rule).
+- Module hardening (`validation` block, `prevent_destroy`, `PodDisruptionBudget`, `disruption.budgets`).
+- Alerting / runbook update.
 
-If the honest answer is "no good reason — we should have caught this," say so. **Blameless** — describe the gap, not the person.
+---
 
-### 8. Validation _(mandatory)_
-How we know the fix works. Concrete:
-- Original failing test now passes (test name, link).
-- Customer workload now completes (workload identifier, run link).
-- Perf regression resolved (number before, number after).
-- Stress / soak / fuzz run completed clean (duration, scale).
-- Other affected configurations / workloads also tested.
+## Worked example — EKS Checkout Service Outage during Karpenter Consolidation (INC-4092)
 
-If you only validated one configuration, say so explicitly — *"validated on Llama-2-70B / 8 GPUs / DeepSpeed; not retested on other workloads."* Don't imply broader coverage than you actually have.
-
-### 9. Action items / follow-ups
-Concrete next-steps that aren't in the fix PR itself. Each item: what + owner + tracking artifact.
-
-- Regression test added at \<seam\>. (Owner, test name.)
-- Refactor to prevent class of bug. (Owner, ticket.)
-- CI gap closed: \<new check\>. (Owner, PR.)
-- Doc / runbook updated. (Owner, link.)
-- Related ticket filed for \<adjacent issue you noticed\>. (Owner, key.)
-
-If there are no action items, write *"None — the fix is sufficient and no class-of-bug follow-up is warranted."* Don't manufacture action items to look thorough.
-
-## Tone
-
-This is engineer-to-engineer. Different from `management-talk`:
-
-- **Code identifiers are first-class.** `tadaLaunchPrepare`, `tada/prim.h::syncWaitPeer`, `scratchBuf`, commit SHAs, line numbers — keep them. The whole point is that future engineers can grep their way back to the change.
-- **Mechanism over narrative.** Walk the actual cause chain. Don't soften it into "a synchronization issue" — say which function skipped which event under which gate.
-- **Active voice, concrete subjects, short paragraphs.** Same rule as everywhere else.
-- **No hedging.** "We believe" / "appears to" / "may have" — drop. State it or don't write it.
-- **Blameless.** Describe the bug, the gap, and the fix. Never "X should have caught this." The CI gap is the failure mode, not the person.
-- **No advocacy.** A post-mortem records what happened and what's next. If you want to argue for a refactor, that's a separate proposal — link to it from the action items.
-
-## Output flow
-
-1. **Confirm all four required inputs are satisfied.** If any are missing, list them and stop. Do not draft.
-2. **Confirm where it goes** (default: JIRA comment on the source ticket). Other valid destinations: PR description, `docs/postmortems/<ticket>.md`, internal wiki page. The shape is the same — only the wrapping changes.
-3. **Produce the draft** as a single chat block.
-4. **Sign-off before posting.** If posting back to JIRA, show the exact ADF payload, wait for explicit *"post it"* / *"go ahead"* / *"yes,"* then `POST /rest/api/3/issue/<KEY>/comment`. Print-only output needs no approval.
-5. **Offer the management-talk handoff:** *"Want a leadership-flavored version? I can hand this to `management-talk`."* Don't do it automatically.
-
-## Worked example — Tada hang in dumbModel (JIRA-12345)
-
-> **Summary.** Tada's single-stream fast-path skipped a required cross-stream synchronization, causing kernels to launch before scratch-buffer writes were visible. Triggered reliably by dumbModel on LLM-7B fine-tuning, hanging the workload at every eval step. Fixed by removing the unsafe fast-path and tightening a device-side check. JIRA-12345, PR org/platform#5751, owner Alex (Tada team).
+> **Summary.** Checkout API (`checkout-svc`) บน `prod-ap-southeast-1` EKS cluster เกิด HTTP 503 เป็นเวลา 14 นาที (02:10–02:24 UTC) เนื่องจาก Karpenter ทำการ consolidate underutilized nodes พร้อมกันโดยที่ `checkout-svc` ไม่มี `PodDisruptionBudget` และ container image ดึง secret จาก AWS Secrets Manager ล้มเหลวตอนขยับไปรันบน `NodePool` ชุดใหม่ที่ไม่ได้ผูก EKS Pod Identity Agent DaemonSet priority. แก้ไขโดยการเพิ่ม `PodDisruptionBudget`, กำหนด `disruption.budgets` บน `NodePool`, และปรับ `priorityClassName: system-node-critical` ให้ `eks-pod-identity-agent`. Incident: INC-4092, PR `infra-gitops#812`, Owner: Somchai (Platform DevSecOps).
 >
-> **Symptom.** 8-GPU LLM-7B fine-tuning under dumbModel hung indefinitely at the first eval step. No error, no timeout — busy-spin in `tadaKernel_AllReduce_f32_RING`. Reproduced on every run.
+> **Blast Radius & Symptom.**
+> - **Affected:** `checkout-svc` (production, `ap-southeast-1`), 38% ของ checkout requests ได้รับ `503 Service Temporarily Unavailable` จาก ALB (`arn:aws:elasticloadbalancing:...:loadbalancer/app/prod-public-alb/...`).
+> - **Symptom:** Pods ใหม่ติดสถานะ `CreateContainerConfigError` จาก `ExternalSecret` sync error (`AccessDeniedException: User: arn:aws:sts::...:assumed-role/karpenter-node-role/... is not authorized to perform: secretsmanager:GetSecretValue`) เนื่องจาก traffic หลุดไปใช้ Node IAM Role แทน Pod Identity Role ขณะที่ `eks-pod-identity-agent` DaemonSet ยังไม่ `Ready` บน Node ใหม่.
 >
-> **Root cause.** The single-stream fast-path in `tadaLaunchPrepare` / `tadaLaunchKernel` / `tadaLaunchFinish` (gated on `scheduler->numStreams == 1 && !plan->persistent`) skipped the cross-stream event between `launchStream` and `handle->shared->deviceStream`. dumbModel hits this gate exactly. The kernel was launched before the IPC publish / scratch-buffer writes on `deviceStream` (which populate `scratchBuf`) were visible to `launchStream`. In the kernel: `scratchBuf == NULL` → stray pointer dereference → ring ready-flag read from garbage memory → thread spins forever waiting for a ready signal that will never arrive.
+> **Root Cause & Failure Chain.**
+> 1. `NodePool` `general-spot` (`karpenter.sh/v1`) ตั้งค่า `consolidationPolicy: WhenEmptyOrUnderutilized` โดยไม่ได้ระบุ `disruption.budgets` (ค่าเริ่มต้นอนุญาตให้ disrupt ได้ 10% แต่เมื่อรวมกับ empty nodes ทำให้ drain 3 nodes ที่มี `checkout-svc` พร้อมกัน).
+> 2. `checkout-svc` Helm release ไม่ได้เปิด `pdb.enabled: true` และไม่มี `topologySpreadConstraints` ทำให้ทั้ง 4 replicas ถูก evict พร้อมกัน.
+> 3. บน Node ใหม่ที่ Karpenter provision ขึ้นมา Application pods ถูก schedule ทันทีพร้อมกับ `eks-pod-identity-agent` DaemonSet ส่งผลให้ช่วง 8 วินาทีแรก SDK fallback ไปหา IMDS / Node Role และถูกปฏิเสธด้วย Zero-Trust IAM policy.
 >
-> **Why it produced the symptom.** The hang lives in the all-reduce ring waitloop, which is the last visible thing in the call stack — but the actual bug is at launch-prep, several frames earlier. The skipped sync is silent until a workload triggers the exact gate (single-stream, non-persistent), and dumbModel's reduce-scatter pattern hits it at every eval step.
+> ```mermaid
+> flowchart LR
+>   KP["Karpenter v1 (NodePool: general-spot)"] -->|"Consolidate 3 Nodes (No PDB)"| EVICT["Evict All 4 checkout-svc Replicas"]
+>   EVICT --> NEW["Provision New EC2NodeClass (al2023)"]
+>   NEW --> RACE["App Pod Starts Before eks-pod-identity-agent Ready"]
+>   RACE --> IAM["Fallback to Node Role -> SecretsManager AccessDenied"]
+>   IAM --> ALB["Public ALB Returns HTTP 503 (14 mins)"]
+> ```
 >
-> **Fix.** PR #5751 removes the single-stream fast-path entirely (the saving was negligible vs. the safety it bypassed) and adds a device-side null check on `scratchBuf` before dereference, so the same class of bug fails loudly instead of silently spinning. A previous attempt (PR #5612) added a host-side defensive check after IPC publish that hid the symptom in some paths but left the underlying race in place — that change is also reverted.
+> **Fix & Remediation.**
+> - **Immediate mitigation (02:21 UTC):** Paused Karpenter consolidation ชั่วคราวโดยตั้ง `disruption.budgets: [{ nodes: "0" }]` และ restart `checkout-svc` pods หลัง `eks-pod-identity-agent` พร้อมใช้งาน.
+> - **Permanent Fix (PR `infra-gitops#812` & `terraform-live#1405`):**
+>   1. เปิดใช้งาน `PodDisruptionBudget` (`minAvailable: "75%"`) และ `topologySpreadConstraints` (`topology.kubernetes.io/zone` & `kubernetes.io/hostname`, `maxSkew: 1`) ใน `checkout-svc` Helm values.
+>   2. กำหนด `disruption.budgets` บน `karpenter.sh/v1` `NodePool` จำกัด `nodes: "10%"` และบล็อกการ consolidate ช่วง peak traffic.
+>   3. เพิ่ม node readiness gate / taint สำหรับ critical CNI & Pod Identity daemonsets ก่อนรับ application workloads.
 >
-> **How it was found.** Reproducer narrowed from "8-GPU LLM-7B hangs sometimes" to a deterministic 30s repro by pinning to a single eval step on a 2-GPU subset. Initial hypothesis: kernel launch ordering on `launchStream`. Disproved by the debugger — the kernel was correctly enqueued. Second hypothesis: scratch-buffer init race. Confirmed by adding `[DBG-7af3]` instrumentation in `tadaLaunchPrepare` printing `scratchBuf` and a `deviceStream` event-record timestamp; the launch happened before the publish completed. Single experiment that nailed it: forcing `numStreams = 2` made the bug disappear, isolating the gate.
+> **Validation.**
+> - ตรวจสอบด้วย `helm lint` และ `kubeconform -strict` บน `infra-gitops#812` ผ่านทั้งหมด.
+> - ทดสอบจำลอง `kubectl drain` บน `staging-ap-southeast-1`: `PodDisruptionBudget` บล็อกการ evict เกิน 1 pod ต่อครั้ง และ `checkout-svc` รักษา zero-dropped requests ตลอด 30 นาทีของ load test.
 >
-> **Why it slipped through.** Latent code path. The single-stream fast-path was added in March under the assumption that dumbModel paths always took the multi-stream route. That assumption was true at the time. A May change to dumbModel's launcher began collapsing eval steps to a single stream — at which point the gate flipped. Tada's CI did not exercise the single-stream + IPC + scratch-buffer combination; the customer workload was the first to hit it.
->
-> **Validation.** Original LLM-7B / 8-GPU / dumbModel workload now completes a full eval pass cleanly (3 consecutive 2-hour runs). `tada-tests` `all_reduce_perf` regression suite green. Soak run: 6 hours on 8 GPUs, no hang. Not retested on other model sizes or non-dumbModel workloads — both go through the multi-stream path and were never affected.
->
-> **Action items.**
-> - Regression test added: `tests/single_stream_ipc_publish_test.cpp` exercising the previously-uncovered gate. (Alex, merged in PR #5751.)
-> - CI gap: add a single-stream + IPC matrix entry to nightly. (Alex, JIRA-12346.)
-> - Doc update: Tada launch-fast-path invariants documented in `docs/launch_synchronization.md`. (Alex, PR #5752.)
-> - Related: audit other `numStreams == 1` fast-paths for the same class of bug. (Filed as JIRA-12347.)
-
-What this post-mortem does that the management-talk version didn't:
-
-- Names every code identifier (`tadaLaunchPrepare`, `scratchBuf`, `numStreams`, `handle->shared->deviceStream`).
-- Walks the cause chain end-to-end so the reader can grep their way to the offending lines.
-- Names the *prior fix attempt* (PR #5612) and what was wrong with it.
-- Documents the *exact experiment* that nailed the cause (`numStreams = 2` made it disappear).
-- States validation coverage honestly — "not retested on other model sizes" is information, not a hole.
-- Action items have owners and tracking artifacts.
+> **Action Items.**
+> - เพิ่ม Kyverno / Checkov policy บังคับให้ทุก production `Deployment` (`replicas >= 2`) ต้องมี `PodDisruptionBudget` และ `topologySpreadConstraints`. (Owner: Somchai, DEVSEC-1102)
+> - เพิ่ม CI check ตรวจสอบว่าทุก `karpenter.sh/v1` `NodePool` ต้องระบุ `disruption.budgets` และ `limits` เสมอ. (Owner: Somchai, DEVSEC-1103)
 
 ## Rules
 
-- **Refuse to draft without all four required inputs.** A post-mortem of a hypothesis is worse than no post-mortem.
-- **Never invent root cause, owner, validation runs, or action items.** If a section's facts aren't there, ask. Don't fill the gap with plausible prose.
-- **Never strip code identifiers** in the engineering record. They are the index. The leadership reframe is `management-talk`'s job, not yours.
-- **Blameless.** Describe gaps and bugs, never people.
-- **State validation coverage honestly.** If you only tested one config, say so. Implying broader coverage is the failure mode that breeds repeat regressions.
-- **Get sign-off before posting to JIRA.** Print-only output needs no approval. Never post to non-JIRA destinations from this skill.
-- **One iteration is normal, three is a smell.** If the user is still revising on the third pass, ask what specific section is wrong — don't keep tweaking blindly.
+- **Refuse to draft without all four required inputs.**
+- **Never invent root causes, metrics, commit SHAs, or validation results.** Ask if facts are missing.
+- **Keep exact AWS/Terraform/K8s identifiers** in the engineering post-mortem.
+- **Always quote Mermaid node labels containing special characters** (`["..."]`) for Confluence Cloud compatibility.
+- **Blameless.** Focus on shift-left policy gaps, architectural constraints, and automated guardrails.

@@ -1,4 +1,4 @@
 # Productivity skills
 
-- **[management-talk](./management-talk/SKILL.md)** — Rewrite engineer-to-engineer content for engineering-org leadership and shape it for the channel it's going to.
-- **[qwenchance](./qwenchance/SKILL.md)** — Keeps a long Claude Code task on-track — breaks loops, bounds reasoning, and triggers a clean handoff before the context window fills.
+- **[management-talk](./management-talk/SKILL.md)** — Rewrite deep DevSecOps incidents, AWS/EKS/Karpenter changes, and security updates for engineering-org leadership shaped for JIRA, Slack, standup, email, or meetings.
+- **[stay-on-track](./stay-on-track/SKILL.md)** — Keeps a long multi-step DevSecOps task on-track — breaks loops, enforces one-edit-one-validation, and triggers a clean artifact-backed handoff before the context window fills.

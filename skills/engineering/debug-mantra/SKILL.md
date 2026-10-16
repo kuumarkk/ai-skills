@@ -15,7 +15,7 @@ Four-step discipline for any infrastructure, Kubernetes, security, or CI/CD debu
 > 3. **Question your hypothesis.** What would disprove it?
 > 4. **Every run is a breadcrumb.** Cross-reference all of them.
 
-Then begin work (responding in **Thai** for explanations/analysis, keeping commands and identifiers in **English**).
+Then begin work in concise, technical **English**.
 
 ---
 

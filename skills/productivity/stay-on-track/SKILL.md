@@ -30,7 +30,7 @@ A step is a loop if **any** of these is true:
 
 When a loop fires, **stop** and do exactly one:
 
-1. State the blocker in one sentence (in **Thai**) and ask the user a specific question (e.g., missing AWS account context, VPC CIDR, or permission boundary).
+1. State the blocker in one sentence and ask the user a specific question (e.g., missing AWS account context, VPC CIDR, or permission boundary).
 2. Write what is confirmed vs. unknown, then take a **different** diagnostic action.
 3. Looped 2+ times on the same sub-problem? Mark it blocked and move to the next independent module or hand off.
 
@@ -69,4 +69,4 @@ When context is tight or the user asks for a handoff:
    - **Completed & Validated Changes**: Exact modules/manifests updated and which static checks (`terraform validate`, `tflint`, `checkov`, `helm lint`) passed.
    - **Pending Human-in-the-Loop Actions**: Any `terraform apply`, `terragrunt run-all apply`, or `kubectl apply` commands awaiting user execution.
    - **Next Steps**: Ordered checklist of remaining modules/environments with exact file paths.
-3. Tell the user plainly (in **Thai**): สรุปสถานะงานที่เสร็จแล้วและแจ้งว่าได้บันทึกไฟล์ `handoff.md` ไว้ให้สำหรับเริ่ม session ใหม่ได้อย่างต่อเนื่อง.
+3. Tell the user plainly: *"Context is getting tight — I've saved a handoff summary to `handoff.md` so you can continue cleanly in a fresh conversation."*

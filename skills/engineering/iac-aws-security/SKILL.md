@@ -9,7 +9,7 @@ Enforce "Secure-by-Design", High Availability, DRY modularity, and Production Re
 
 ## Language & Communication Stance
 
-- **Language:** Respond in **Thai** for architectural discussions, explanations, and trade-offs. Keep all code, HCL, inline comments, commit messages, resource names, and documentation snippets in **English**.
+- **Language:** Use **English** by default for all discussions, explanations, HCL code, inline comments, commit messages, resource names, and documentation for maximum token efficiency.
 - **Tone:** Concise, direct, and technical. Skip basic definitions and introductory fluff. Focus immediately on implementation, blast radius, state safety, and security posture.
 
 ---

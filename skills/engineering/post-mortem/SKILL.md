@@ -11,7 +11,7 @@ For the executive / leadership version of this same incident, hand the finished 
 
 ## Language & Communication Stance
 
-- **Language:** Write prose explanations in **Thai** (unless the user explicitly requests an English-only document for external auditors/vendors). Keep all technical identifiers, resource names, log lines, commands, and Mermaid node labels in **English**.
+- **Language:** Write in concise, technical **English** by default for maximum token efficiency and greppability across engineering tickets and documentation.
 - **Tone:** Blameless, direct, mechanism-first, zero hedging.
 
 ## When NOT to use
@@ -74,16 +74,16 @@ Concrete follow-ups with **What + Owner + Tracking Ticket**:
 
 ## Worked example — EKS Checkout Service Outage during Karpenter Consolidation (INC-4092)
 
-> **Summary.** Checkout API (`checkout-svc`) บน `prod-ap-southeast-1` EKS cluster เกิด HTTP 503 เป็นเวลา 14 นาที (02:10–02:24 UTC) เนื่องจาก Karpenter ทำการ consolidate underutilized nodes พร้อมกันโดยที่ `checkout-svc` ไม่มี `PodDisruptionBudget` และ container image ดึง secret จาก AWS Secrets Manager ล้มเหลวตอนขยับไปรันบน `NodePool` ชุดใหม่ที่ไม่ได้ผูก EKS Pod Identity Agent DaemonSet priority. แก้ไขโดยการเพิ่ม `PodDisruptionBudget`, กำหนด `disruption.budgets` บน `NodePool`, และปรับ `priorityClassName: system-node-critical` ให้ `eks-pod-identity-agent`. Incident: INC-4092, PR `infra-gitops#812`, Owner: Somchai (Platform DevSecOps).
+> **Summary.** Checkout API (`checkout-svc`) on the `prod-ap-southeast-1` EKS cluster returned HTTP 503 for 14 minutes (02:10–02:24 UTC) when Karpenter consolidated three underutilized nodes simultaneously. `checkout-svc` had no `PodDisruptionBudget`, and replacement pods on newly provisioned nodes failed AWS Secrets Manager authentication because application containers started before the `eks-pod-identity-agent` DaemonSet became `Ready`. Fixed by enabling `PodDisruptionBudget` and `topologySpreadConstraints`, setting explicit `disruption.budgets` on the `NodePool`, and enforcing node readiness ordering for `eks-pod-identity-agent`. Incident: INC-4092, PR `infra-gitops#812`, Owner: Alex (Platform DevSecOps).
 >
 > **Blast Radius & Symptom.**
-> - **Affected:** `checkout-svc` (production, `ap-southeast-1`), 38% ของ checkout requests ได้รับ `503 Service Temporarily Unavailable` จาก ALB (`arn:aws:elasticloadbalancing:...:loadbalancer/app/prod-public-alb/...`).
-> - **Symptom:** Pods ใหม่ติดสถานะ `CreateContainerConfigError` จาก `ExternalSecret` sync error (`AccessDeniedException: User: arn:aws:sts::...:assumed-role/karpenter-node-role/... is not authorized to perform: secretsmanager:GetSecretValue`) เนื่องจาก traffic หลุดไปใช้ Node IAM Role แทน Pod Identity Role ขณะที่ `eks-pod-identity-agent` DaemonSet ยังไม่ `Ready` บน Node ใหม่.
+> - **Affected:** `checkout-svc` (production, `ap-southeast-1`); 38% of checkout requests returned `503 Service Temporarily Unavailable` at the public ALB (`arn:aws:elasticloadbalancing:...:loadbalancer/app/prod-public-alb/...`).
+> - **Symptom:** Replacement pods stalled in `CreateContainerConfigError` due to `ExternalSecret` sync failures (`AccessDeniedException: User: arn:aws:sts::...:assumed-role/karpenter-node-role/... is not authorized to perform: secretsmanager:GetSecretValue`) as SDK calls fell back to the EC2 Node IAM Role before Pod Identity was initialized on the new node.
 >
 > **Root Cause & Failure Chain.**
-> 1. `NodePool` `general-spot` (`karpenter.sh/v1`) ตั้งค่า `consolidationPolicy: WhenEmptyOrUnderutilized` โดยไม่ได้ระบุ `disruption.budgets` (ค่าเริ่มต้นอนุญาตให้ disrupt ได้ 10% แต่เมื่อรวมกับ empty nodes ทำให้ drain 3 nodes ที่มี `checkout-svc` พร้อมกัน).
-> 2. `checkout-svc` Helm release ไม่ได้เปิด `pdb.enabled: true` และไม่มี `topologySpreadConstraints` ทำให้ทั้ง 4 replicas ถูก evict พร้อมกัน.
-> 3. บน Node ใหม่ที่ Karpenter provision ขึ้นมา Application pods ถูก schedule ทันทีพร้อมกับ `eks-pod-identity-agent` DaemonSet ส่งผลให้ช่วง 8 วินาทีแรก SDK fallback ไปหา IMDS / Node Role และถูกปฏิเสธด้วย Zero-Trust IAM policy.
+> 1. `NodePool` `general-spot` (`karpenter.sh/v1`) used `consolidationPolicy: WhenEmptyOrUnderutilized` without a restrictive `disruption.budgets` ceiling, draining 3 nodes hosting `checkout-svc` simultaneously during a low-traffic window.
+> 2. `checkout-svc` Helm values had `pdb.enabled: false` and no `topologySpreadConstraints`, allowing all 4 replicas to be evicted concurrently.
+> 3. On the newly launched `EC2NodeClass` instance, application pods were scheduled concurrently with `eks-pod-identity-agent`; during the 8-second window before the agent bound its link-local socket, secret fetches fell back to IMDSv2 / Node IAM Role and were blocked by Zero-Trust IAM policy.
 >
 > ```mermaid
 > flowchart LR
@@ -95,19 +95,19 @@ Concrete follow-ups with **What + Owner + Tracking Ticket**:
 > ```
 >
 > **Fix & Remediation.**
-> - **Immediate mitigation (02:21 UTC):** Paused Karpenter consolidation ชั่วคราวโดยตั้ง `disruption.budgets: [{ nodes: "0" }]` และ restart `checkout-svc` pods หลัง `eks-pod-identity-agent` พร้อมใช้งาน.
+> - **Immediate mitigation (02:21 UTC):** Paused Karpenter consolidation via `disruption.budgets: [{ nodes: "0" }]` and triggered a rolling restart of `checkout-svc` once `eks-pod-identity-agent` was healthy on all nodes.
 > - **Permanent Fix (PR `infra-gitops#812` & `terraform-live#1405`):**
->   1. เปิดใช้งาน `PodDisruptionBudget` (`minAvailable: "75%"`) และ `topologySpreadConstraints` (`topology.kubernetes.io/zone` & `kubernetes.io/hostname`, `maxSkew: 1`) ใน `checkout-svc` Helm values.
->   2. กำหนด `disruption.budgets` บน `karpenter.sh/v1` `NodePool` จำกัด `nodes: "10%"` และบล็อกการ consolidate ช่วง peak traffic.
->   3. เพิ่ม node readiness gate / taint สำหรับ critical CNI & Pod Identity daemonsets ก่อนรับ application workloads.
+>   1. Enabled `PodDisruptionBudget` (`minAvailable: "75%"`) and `topologySpreadConstraints` (`topology.kubernetes.io/zone` & `kubernetes.io/hostname`, `maxSkew: 1`) in `checkout-svc` Helm values.
+>   2. Configured `disruption.budgets` on `karpenter.sh/v1` `NodePool` capping concurrent disruptions at `nodes: "10%"` and blocking consolidation during peak traffic windows.
+>   3. Added startup readiness ordering so critical CNI and `eks-pod-identity-agent` DaemonSets initialize before application pods start on new nodes.
 >
 > **Validation.**
-> - ตรวจสอบด้วย `helm lint` และ `kubeconform -strict` บน `infra-gitops#812` ผ่านทั้งหมด.
-> - ทดสอบจำลอง `kubectl drain` บน `staging-ap-southeast-1`: `PodDisruptionBudget` บล็อกการ evict เกิน 1 pod ต่อครั้ง และ `checkout-svc` รักษา zero-dropped requests ตลอด 30 นาทีของ load test.
+> - `helm lint` and `kubeconform -strict` passed on `infra-gitops#812`.
+> - Simulated concurrent `kubectl drain` on `staging-ap-southeast-1`: `PodDisruptionBudget` restricted evictions to 1 pod at a time, maintaining zero dropped requests across a 30-minute load test.
 >
 > **Action Items.**
-> - เพิ่ม Kyverno / Checkov policy บังคับให้ทุก production `Deployment` (`replicas >= 2`) ต้องมี `PodDisruptionBudget` และ `topologySpreadConstraints`. (Owner: Somchai, DEVSEC-1102)
-> - เพิ่ม CI check ตรวจสอบว่าทุก `karpenter.sh/v1` `NodePool` ต้องระบุ `disruption.budgets` และ `limits` เสมอ. (Owner: Somchai, DEVSEC-1103)
+> - Add Kyverno / Checkov policy requiring `PodDisruptionBudget` and `topologySpreadConstraints` on all production `Deployment` workloads with `replicas >= 2`. (Owner: Alex, DEVSEC-1102)
+> - Add CI check enforcing explicit `disruption.budgets` and resource `limits` on every `karpenter.sh/v1` `NodePool`. (Owner: Alex, DEVSEC-1103)
 
 ## Rules
 

@@ -9,7 +9,7 @@ Enforce shift-left security gates in CI/CD pipelines, defensive macOS-compatible
 
 ## Language & Communication Stance
 
-- **Language:** Respond in **Thai** for architectural discussions, explanations, and trade-offs. Keep all pipeline YAML, Bash/Python code, inline comments, commit messages, and diagram labels in **English**.
+- **Language:** Use **English** by default for all discussions, explanations, pipeline YAML, Bash/Python code, inline comments, commit messages, and diagram labels for maximum token efficiency.
 - **Tone:** Concise, direct, and technical. Focus immediately on implementation, supply-chain security, error handling, and operational reliability.
 
 ---

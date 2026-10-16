@@ -7,3 +7,5 @@
 - **[scrutinize](./scrutinize/SKILL.md)** — Outsider-perspective end-to-end DevSecOps architecture, blast-radius, and security review of Terraform/Terragrunt, K8s/Karpenter, and CI/CD changes.
 - **[post-mortem](./post-mortem/SKILL.md)** — Write the canonical DevSecOps engineering record and RCA of a resolved production incident, security remediation, or infrastructure bug.
 - **[flash-agent](./flash-agent/SKILL.md)** — Delegate mechanical, read-only DevSecOps auditing, log condensation, and boilerplate scaffolding to a fast Gemini Flash subagent (`flash` / `flash_lite`) via `invoke_subagent`.
+- **[finops-cloud-cost](./finops-cloud-cost/SKILL.md)** — Cloud FinOps & cost optimization across AWS, Terraform/Terragrunt, and EKS/Karpenter v1+ (cost allocation tags, Graviton/Spot diversification, Karpenter consolidation, S3/EBS/CloudWatch lifecycles, NAT/cross-AZ transfer reduction, and Infracost CI/CD gates).
+

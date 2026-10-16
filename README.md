@@ -46,6 +46,7 @@ List every `SKILL.md` in the repo:
 - **[scrutinize](./skills/engineering/scrutinize/SKILL.md)** — Outsider-perspective end-to-end DevSecOps architecture and security review of Terraform/Terragrunt PRs, K8s/Karpenter manifests, and CI/CD pipelines against AWS CIS, Zero-Trust, HA, and state-safety standards.
 - **[post-mortem](./skills/engineering/post-mortem/SKILL.md)** — Write the canonical DevSecOps engineering record of a resolved production incident, security remediation, or infrastructure bug — blast radius, failure chain (with Confluence Cloud Mermaid diagram), fix, validation, and shift-left prevention action items.
 - **[flash-agent](./skills/engineering/flash-agent/SKILL.md)** — Delegate mechanical, non-destructive DevSecOps tasks (running read-only linters/scanners `tflint`/`checkov`/`trivy`/`helm lint`, tag/variable compliance audits, CloudWatch/pod log summarization, Terragrunt scaffolding) to a fast Gemini Flash subagent (`flash` / `flash_lite`) via `invoke_subagent`.
+- **[finops-cloud-cost](./skills/engineering/finops-cloud-cost/SKILL.md)** — Architect, audit, and enforce Cloud FinOps and cost optimization across AWS, Terraform/Terragrunt, and EKS/Karpenter v1+ (cost allocation tagging, Graviton `arm64` & Spot diversification, Karpenter consolidation, S3/EBS `gp3`/CloudWatch lifecycle policies, NAT Gateway & cross-AZ transfer reduction, stateful right-sizing, Cost Anomaly Detection, and shift-left Infracost CI/CD gates) without compromising Zero-Trust security or High Availability.
 
 ### Productivity
 

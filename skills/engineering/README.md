@@ -8,4 +8,6 @@
 - **[post-mortem](./post-mortem/SKILL.md)** — Write the canonical DevSecOps engineering record and RCA of a resolved production incident, security remediation, or infrastructure bug.
 - **[flash-agent](./flash-agent/SKILL.md)** — Delegate mechanical, read-only DevSecOps auditing, log condensation, and boilerplate scaffolding to a fast Gemini Flash subagent (`flash` / `flash_lite`) via `invoke_subagent`.
 - **[finops-cloud-cost](./finops-cloud-cost/SKILL.md)** — Cloud FinOps & cost optimization across AWS, Terraform/Terragrunt, and EKS/Karpenter v1+ (cost allocation tags, Graviton/Spot diversification, Karpenter consolidation, S3/EBS/CloudWatch lifecycles, NAT/cross-AZ transfer reduction, and Infracost CI/CD gates).
-
+- **[observability-slo-alerting](./observability-slo-alerting/SKILL.md)** — OpenTelemetry Collector pipelines (tail-sampling, PII/secret redaction, `memory_limiter`), Prometheus/VictoriaMetrics/AMP cardinality governance, and Google SRE multi-window multi-burn-rate SLO alerting.
+- **[secops-incident-response](./secops-incident-response/SKILL.md)** — AWS & EKS live security incident response, CloudTrail/GuardDuty/Falco threat hunting, IAM/STS session revocation (`AWSRevokeOlderSessions`), pod quarantine & forensic snapshots, and KEV/EPSS CVE triage.
+- **[zero-downtime-migrations-dr](./zero-downtime-migrations-dr/SKILL.md)** — Zero-downtime EKS/Karpenter upgrade sequencing, declarative Terraform state surgery (`moved`/`import`/`removed`), Aurora Blue/Green cutovers, and WORM AWS Backup Vault Lock + Velero DR restore drills.

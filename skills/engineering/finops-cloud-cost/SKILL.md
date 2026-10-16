@@ -5,12 +5,7 @@ description: Architect, audit, and enforce Cloud FinOps and cost optimization ac
 
 # Cloud FinOps & AWS / EKS Cost Optimization
 
-Enforce "Cost-Aware by Design" across every AWS architecture, Terraform/Terragrunt module, and EKS/Karpenter manifest—eliminating waste and optimizing unit economics **without** degrading Zero-Trust security posture or production High Availability (HA).
-
-## Language & Communication Stance
-
-- **Language:** Use **English** by default for all cost analyses, architectural recommendations, HCL/YAML code, inline comments, and documentation for maximum token efficiency.
-- **Tone:** Concise, direct, and quantitative. Prioritize findings by **estimated monthly savings ($ or %)**, **implementation effort**, and **blast radius / HA impact**.
+Enforce "Cost-Aware by Design" across every AWS architecture, Terraform/Terragrunt module, and EKS/Karpenter manifest—eliminating waste and optimizing unit economics **without** degrading Zero-Trust security posture or production High Availability (HA). Prioritize every recommendation by **estimated monthly savings (`$` or `%`)**, **implementation effort**, and **blast radius / HA impact**.
 
 ---
 

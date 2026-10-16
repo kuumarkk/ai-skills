@@ -7,11 +7,6 @@ description: Author, refactor, and review production-grade Terraform and Terragr
 
 Enforce "Secure-by-Design", High Availability, DRY modularity, and Production Readiness across every Terraform module, Terragrunt configuration, and AWS architectural design.
 
-## Language & Communication Stance
-
-- **Language:** Use **English** by default for all discussions, explanations, HCL code, inline comments, commit messages, resource names, and documentation for maximum token efficiency.
-- **Tone:** Concise, direct, and technical. Skip basic definitions and introductory fluff. Focus immediately on implementation, blast radius, state safety, and security posture.
-
 ---
 
 ## 1. IaC Standards (Terraform & Terragrunt)
@@ -30,13 +25,15 @@ Enforce "Secure-by-Design", High Availability, DRY modularity, and Production Re
     - Correct: `resource "aws_s3_bucket" "audit_logs"`
     - Wrong: `resource "aws_s3_bucket" "s3_bucket_audit_logs"`
 
-### Defensive HCL Coding
+### Defensive HCL Coding & Zero-Secret State Hygiene
 - **Version Pinning:** Pin Terraform and provider/module versions in `versions.tf` using pessimistic constraints (`~>`).
 - **Index Stability:** Prefer `for_each` with static map keys (`toset()` or explicit `map(object(...))`) over `count` to prevent unintended resource destruction/recreation when list elements shift.
 - **Safe Traversal:** Use `try()` and `can()` when traversing optional nested objects or dynamic maps.
+- **Keep Secrets Out of `.tfstate` (Terraform 1.10+ / 1.11+):**
+  - Use `ephemeral "aws_secretsmanager_secret_version"` / `ephemeral "random_password"` and provider write-only arguments (`password_wo`, ` password_wo_version`, `secret_string_wo`) where supported, or RDS `manage_master_user_password = true` so plaintext credentials never persist in `.tfstate`.
 - **Strict Variable Contracts:**
   - Every `variable` MUST declare an explicit `type` and `description`.
-  - Add `validation` blocks for critical inputs (CIDR blocks via ` can(cidrhost(var.cidr, 0))`, allowed environment tiers, instance families, KMS key ARNs).
+  - Add `validation` blocks for critical inputs (CIDR blocks via `can(cidrhost(var.cidr, 0))`, allowed environment tiers, instance families, KMS key ARNs).
   - Mark secrets, tokens, passwords, and sensitive outputs with `sensitive = true`.
 - **Dynamic Context Resolution:**
   - Never hardcode AWS Account IDs, regions, partition names, or credentials.
@@ -60,7 +57,7 @@ Enforce "Secure-by-Design", High Availability, DRY modularity, and Production Re
 ### IAM & Identity (Least Privilege)
 - **Strict Least Privilege:** Scope every IAM statement to the exact required actions and resource ARNs. Avoid `"Action": "*"` or `"Resource": "*"` unless an AWS API strictly requires wildcard resources (e.g., certain `ec2:Describe*` or `kms:` actions)—when required, document the exact justification in an inline comment above the statement.
 - **Short-Lived Credentials Only:**
-  - Kubernetes workloads: Use **EKS Pod Identity** (`aws_eks_pod_identity_association`, preferred) or **IRSA** (IAM Roles for Service Accounts) with strict condition keys (`StringEquals` on namespace and service account).
+  - Kubernetes workloads: Use **EKS Pod Identity** (`aws_eks_pod_identity_association` with `permissions.eks.amazonaws.com` trust policy and session tags `eks-cluster-arn` / `kubernetes-namespace` / `kubernetes-service-account`, preferred) or **IRSA** (IAM Roles for Service Accounts) with strict `StringEquals` conditions on namespace and service account.
   - CI/CD pipelines: Use **IAM OIDC Identity Providers** (`token.actions.githubusercontent.com` / GitLab OIDC) with scoped `sub` / `aud` conditions.
   - **Never** provision IAM users with static `aws_iam_access_key` (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) for workloads or pipelines.
 

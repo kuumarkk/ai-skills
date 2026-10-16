@@ -44,17 +44,15 @@ for DEST in "${DESTS[@]}"; do
   done
 done
 
-# Copy global Senior DevSecOps persona & safety guardrails (GEMINI.md)
-RULE_DESTS=(
-  "$HOME/.gemini/config/GEMINI.md"
-  "$HOME/.gemini/GEMINI.md"
-)
+# Copy global Senior DevSecOps persona & safety guardrails (GEMINI.md).
+# Copy to ~/.gemini/config/GEMINI.md as a standalone file (independent of repo path),
+# and link ~/.gemini/GEMINI.md -> ~/.gemini/config/GEMINI.md internally within ~/.gemini
+# so Antigravity deduplicates both global paths to a single rule injection.
+PRIMARY_RULE="$HOME/.gemini/config/GEMINI.md"
+SECONDARY_RULE="$HOME/.gemini/GEMINI.md"
 
-for RULE_DEST in "${RULE_DESTS[@]}"; do
-  mkdir -p "$(dirname "$RULE_DEST")"
-  if [ -e "$RULE_DEST" ] || [ -L "$RULE_DEST" ]; then
-    rm -f "$RULE_DEST"
-  fi
-  cp "$REPO/GEMINI.md" "$RULE_DEST"
-  echo "copied GEMINI.md -> $RULE_DEST"
-done
+mkdir -p "$(dirname "$PRIMARY_RULE")"
+rm -f "$PRIMARY_RULE" "$SECONDARY_RULE"
+cp "$REPO/GEMINI.md" "$PRIMARY_RULE"
+ln -s "$PRIMARY_RULE" "$SECONDARY_RULE"
+echo "copied GEMINI.md -> $PRIMARY_RULE (and deduplicated $SECONDARY_RULE)"

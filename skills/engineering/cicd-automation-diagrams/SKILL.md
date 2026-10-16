@@ -7,11 +7,6 @@ description: Build shift-left DevSecOps CI/CD pipelines (GitHub Actions, GitLab 
 
 Enforce shift-left security gates in CI/CD pipelines, defensive macOS-compatible shell and Python automation, and Confluence Cloud-safe Mermaid.js architecture diagrams.
 
-## Language & Communication Stance
-
-- **Language:** Use **English** by default for all discussions, explanations, pipeline YAML, Bash/Python code, inline comments, commit messages, and diagram labels for maximum token efficiency.
-- **Tone:** Concise, direct, and technical. Focus immediately on implementation, supply-chain security, error handling, and operational reliability.
-
 ---
 
 ## 1. CI/CD Pipelines & Shift-Left DevSecOps

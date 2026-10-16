@@ -7,11 +7,6 @@ description: Design, harden, and review Kubernetes workloads, Dockerfiles, Karpe
 
 Enforce container hardening, Kubernetes Pod Security Standards (Restricted/Baseline), Karpenter v1+ GA specifications, and production High Availability across all EKS workloads and GitOps pipelines.
 
-## Language & Communication Stance
-
-- **Language:** Use **English** by default for all discussions, explanations, manifests, Dockerfiles, Helm templates, inline comments, commit messages, and resource names for maximum token efficiency.
-- **Tone:** Concise, direct, and technical. Focus immediately on workload isolation, scheduling resilience, blast radius, and least privilege.
-
 ---
 
 ## 1. Container Hardening (Dockerfile)

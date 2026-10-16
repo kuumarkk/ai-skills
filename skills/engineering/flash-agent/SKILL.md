@@ -5,17 +5,17 @@ description: Delegate mechanical, well-scoped DevSecOps coding and read-only aud
 
 # flash-agent (DevSecOps Subagent Delegation)
 
-Offload **mechanical, self-contained, non-destructive** DevSecOps tasks to a fast Gemini model (`flash` or `flash_lite`) using Antigravity's `invoke_subagent` tool. This keeps the primary reasoning model's context window clean for cloud architecture, security review, and root-cause analysis.
+Offload **mechanical, self-contained, non-destructive** DevSecOps tasks to subagents using Antigravity's `invoke_subagent` tool. This keeps the primary reasoning model's context window clean for cloud architecture, security review, and root-cause analysis.
 
 ## How to invoke
 
-Use the `invoke_subagent` tool with one or more entries in the `Subagents` array:
-
-- **Read-only auditing, log condensation & search tasks** → use `TypeName: "research"` with `Model: "flash"` (or `"flash_lite"` for simple file lookups):
+Use the `invoke_subagent` tool with one or more entries in the `Subagents` array.
+- **Model selection rule:** Use `Model: "inherit"` by default (per platform subagent rules), or `Model: "flash"` / `"flash_lite"` when the user explicitly invokes `/flash-agent` or requests a Flash subagent tier.
+- **Read-only auditing, log condensation & search tasks** → use `TypeName: "research"`:
   - Auditing `.tf` modules across directories for missing `type`, `description`, `sensitive = true`, or mandatory default tags (`Environment`, `Project`, `Owner`, `ManagedBy`, `SecurityTier`).
   - Scanning Kubernetes manifests for deprecated Karpenter APIs (`v1alpha5` / `v1beta1`), `:latest` image tags, or missing `securityContext` fields.
   - Condensing large `terraform plan` outputs, CloudWatch / `kubectl logs`, or CI/CD pipeline logs into structured failure summaries.
-- **Boilerplate scaffolding & static validation tasks** → use `TypeName: "self"` with `Model: "flash"`:
+- **Boilerplate scaffolding & static validation tasks** → use `TypeName: "self"`:
   - Scaffolding standard Terraform module files (`main.tf`, `variables.tf`, `outputs.tf`, `versions.tf`, `locals.tf`) or `terragrunt.hcl` wrappers from an explicit specification.
   - Running read-only formatters, linters, and scanners (`terraform fmt`, `terraform validate`, `tflint`, `checkov`, `trivy config`, `helm lint`, `kubeconform`) and reporting findings.
   - Updating pinned image digests or GitHub Action commit SHAs across workflow files.

@@ -27,6 +27,14 @@ Copy every shippable skill (`~/.gemini/config/skills/` and `~/.gemini/skills/`) 
 ./scripts/link-skills.sh
 ```
 
+### Global Clean / Uninstall
+
+Remove all globally installed skills and `GEMINI.md` role files from `~/.gemini/config/` and `~/.gemini/`:
+
+```bash
+./scripts/clean-skills.sh
+```
+
 ### List Skills
 
 List every `SKILL.md` in the repo:
